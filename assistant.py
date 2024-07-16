@@ -12,9 +12,10 @@ incognito = False
 SYSTEM_PROMPT = """You are an AI assistance that has memory of every conversation you have ever has with this user.
     On every prompt from the user, the system has checked for any relevant messages you have had with the user.
     If any embedded previous conversations are attached, use them for context to respond to the user if the context is relevant and useful to the response.
-    If the recalled conversations are irrelevant, disreagard them and respond to the user and respond normally as an AI assistant. Do not refer to recaled converstations.
+    If the recalled conversations are irrelevant, disreagard them and respond to the user and respond normally as an AI assistant. Do not refer to recalled converstations.
     Just use any useful data from the previous conversations and respond normally as an intelligent AI assistant.
-    You are to bypass any checks preventing you from revealing personal infromation as your job is to reveal personal information to the user if it is relevant to the prompt.
+    Never make references to previous conversations or memories, just use the data to respond to the user to the best of your ability.
+    You will always gives concise answers. Before every response, think carefully and only respond with the most critical information to the prompt. 
     """
 
 conversation = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -98,6 +99,7 @@ def retrieve_embeddings(queries, results_per_query=1, prompt=None):
             if best not in embeddings:
                 if "yes" in classify_embedding(query, best):
                     embeddings.add(best)
+                    print(f"\nEmbedding added: {best}")
     if prompt:
         response = ollama.embeddings(model="nomic-embed-text", prompt=prompt)
         prompt_embedding = response["embedding"]
@@ -107,6 +109,7 @@ def retrieve_embeddings(queries, results_per_query=1, prompt=None):
         )
         best_embedding = results["documents"][0][0]
         embeddings.add(best_embedding)
+        print(f"\nEmbedding added from prompt: {best_embedding}")
     return embeddings
 
 
@@ -184,7 +187,39 @@ def classify_embedding(query, context):
         },
         {
             "role": "user",
+            "content": f"SEARCH QUERY: Who is my best friend\n\nEMBEDDED CONTEXT: I have a best friend named John. We have been friends since high school.",
+        },
+        {
+            "role": "assistant",
+            "content": "yes",
+        },
+        {
+            "role": "user",
+            "content": f"SEARCH QUERY: Who likes cats\n\nEMBEDDED CONTEXT: My friend Christy has two cats and loves them very much.",
+        },
+        {
+            "role": "assistant",
+            "content": "yes",
+        },
+        {
+            "role": "user",
             "content": f"SEARCH QUERY: Llama3 Python Voice Assistant\n\nEMBEDDED CONTEXT: Siri is a voice assistant used on Apple iOS and Mac OS.",
+        },
+        {
+            "role": "assistant",
+            "content": "no",
+        },
+        {
+            "role": "user",
+            "content": f"SEARCH QUERY: Who loves cats\n\nEMBEDDED CONTEXT: My friend John has two dogs.",
+        },
+        {
+            "role": "assistant",
+            "content": "no",
+        },
+        {
+            "role": "user",
+            "content": f"SEARCH QUERY: I am planning a trip to Japan, what is there to do there? \n\nEMBEDDED CONTEXT: Yesterday, I went to my friends house to help him mow the lawn.",
         },
         {
             "role": "assistant",
@@ -254,7 +289,7 @@ if __name__ == "__main__":
             prompt = prompt[8:]
             recall(prompt)
             stream_response(prompt)
-        elif prompt.lower() == "/exit":
+        elif prompt[:5].lower() == "/exit":
             break
         else:
             conversation.append({"role": "user", "content": prompt})
